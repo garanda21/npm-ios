@@ -13,6 +13,7 @@ struct ProxyView: View {
     @Environment(\.dismiss) var dismiss
 
     var proxy: Proxy
+    var onDelete: (() -> Void)? = nil
     
     @State private var cacheAssets: Bool = false
     @State private var blockCommonExploits: Bool = false
@@ -34,6 +35,14 @@ struct ProxyView: View {
     
     var body: some View {
         List {
+            Section {
+                ProxyHealthLabel(health: proxy.health)
+                if proxy.health == .error, let message = proxy.meta.nginx_err, !message.isEmpty {
+                    Text(message)
+                        .font(.footnote.monospaced())
+                        .textSelection(.enabled)
+                }
+            }
             hostSection
             
             Section {
@@ -55,6 +64,7 @@ struct ProxyView: View {
             self.blockCommonExploits = self.proxy.block_exploits
             self.websocketsSupport = self.proxy.allow_websocket_upgrade
         }
+        .navigationTitle(proxy.displayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -87,7 +97,11 @@ struct ProxyView: View {
         ProxiesRequest.delete(id: self.proxy.id) { success in
             if success {
                 self.appService.fetchProxies()
-                self.dismiss()
+                if let onDelete {
+                    onDelete()
+                } else {
+                    dismiss()
+                }
             }
         }
     }

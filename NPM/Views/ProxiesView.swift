@@ -1,66 +1,127 @@
-//
-//  ProxiesView.swift
-//  NPM
-//
-//  Created by Yaser Almasri on 13/08/25.
-//
-
 import SwiftUI
 
 struct ProxiesView: View {
-    
-    @EnvironmentObject var appService: AppService
-    @State private var searchText = ""
+    @EnvironmentObject private var appService: AppService
+    @AppStorage("npm_server_url") private var instanceURL = ""
 
-    var filteredProxies: [Proxy] {
-        guard !searchText.isEmpty else { return appService.proxies }
-        let options: String.CompareOptions = [.caseInsensitive, .diacriticInsensitive]
-        return appService.proxies.filter { proxy in
-            proxy.domain_names.contains { $0.range(of: searchText, options: options) != nil }
-            || proxy.forward_host.range(of: searchText, options: options) != nil
+    @Binding var route: ProxyRoute?
+    @State private var query = ""
+    @State private var filter: ProxyHealth?
+    @State private var selection: Int?
+    @State private var compactColumn = NavigationSplitViewColumn.sidebar
+    @State private var isCreating = false
+
+    private var results: [Proxy] {
+        appService.proxies.filter { proxy in
+            (filter == nil || proxy.health == filter) && proxy.matchesSearch(query)
         }
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(spacing: 8) {
-                    ForEach(filteredProxies, id: \.id) { proxy in
-                        NavigationLink {
-                            ProxyView(proxy: proxy)
-                                .environmentObject(AppService.shared)
-                        } label: {
-                            ProxyRowView(proxy: proxy)
-                                .environmentObject(AppService.shared)
+        NavigationSplitView(preferredCompactColumn: $compactColumn) {
+            List(selection: $selection) {
+                if !results.isEmpty && appService.proxyLoadPhase == .failed {
+                    Label("Couldn't refresh proxies. Pull to retry.", systemImage: "wifi.exclamationmark")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                if let filter {
+                    Section {
+                        ForEach(results, id: \.id, content: proxyLink)
+                    } header: {
+                        ProxyHealthLabel(health: filter)
+                    }
+                } else {
+                    ForEach(results, id: \.id, content: proxyLink)
+                }
+            }
+            .overlay {
+                if results.isEmpty {
+                    ProxyListPlaceholder(
+                        instanceConfigured: !instanceURL.isEmpty,
+                        phase: appService.proxyLoadPhase,
+                        filtered: filter != nil || !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                        retry: appService.fetchProxies,
+                        reset: resetFilters
+                    )
+                }
+            }
+            .navigationTitle("PROXY_HOSTS")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search domains or upstreams")
+            .refreshable { await appService.reloadProxies() }
+            .navigationSplitViewColumnWidth(min: 290, ideal: 360)
+            .toolbar {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Menu {
+                        Picker("Proxy status", selection: $filter) {
+                            Text("All statuses").tag(nil as ProxyHealth?)
+                            ForEach(ProxyHealth.allCases) { health in
+                                Label(String(localized: health.title), systemImage: health.symbol)
+                                    .tag(Optional(health))
+                            }
+                        }
+                    } label: {
+                        Label("Filter proxies", systemImage: filter == nil ? "line.3.horizontal.decrease" : "line.3.horizontal.decrease.circle.fill")
+                    }
+                    Button("Add proxy", systemImage: "plus") { isCreating = true }
+                        .disabled(instanceURL.isEmpty)
+                }
+            }
+        } detail: {
+            NavigationStack {
+                if let proxy = appService.proxies.first(where: { $0.id == selection }) {
+                    ProxyView(proxy: proxy) {
+                        selection = nil
+                        compactColumn = .sidebar
+                    }
+                        .id(proxy.id)
+                } else {
+                    ContentUnavailableView("Select a proxy", systemImage: "bolt.horizontal.circle")
+                }
+            }
+        }
+        .sheet(isPresented: $isCreating) {
+            NavigationStack {
+                ProxiesCreateView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Cancel", role: .cancel) { isCreating = false }
                         }
                     }
-                }
-                .padding(.vertical, 8)
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("PROXY_HOSTS")
-            .refreshable(action: { self.appService.fetchProxies() })
-            .onAppear {
-                self.appService.fetchProxies()
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        ProxiesCreateView()
-                            .environmentObject(AppService.shared)
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-
-                }
-            }
-        }//NavStack
-        .searchable(text: $searchText, prompt: "Search")
+        }
+        .task(id: instanceURL) { await appService.reloadProxies() }
+        .onChange(of: route, initial: true) { _, route in
+            if let route { apply(route) }
+        }
+        .onChange(of: instanceURL) { _, _ in
+            selection = nil
+            compactColumn = .sidebar
+        }
     }
-}
 
-#Preview {
-    AppService.shared.proxies = [Proxy.fake(), Proxy.fake()]
-    return ProxiesView()
-        .environmentObject(AppService.shared)
+    private func proxyLink(_ proxy: Proxy) -> some View {
+        NavigationLink(value: proxy.id) {
+            ProxyRowView(proxy: proxy)
+        }
+    }
+
+    private func apply(_ route: ProxyRoute) {
+        resetFilters()
+        switch route {
+        case .list(let health):
+            filter = health
+            selection = nil
+            compactColumn = .sidebar
+        case .detail(let id):
+            selection = id
+            compactColumn = .detail
+        }
+        self.route = nil
+    }
+
+    private func resetFilters() {
+        query = ""
+        filter = nil
+    }
 }

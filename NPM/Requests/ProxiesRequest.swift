@@ -20,12 +20,14 @@ class ProxiesRequest {
             return
         }
         guard let auth = try? JSONDecoder().decode(Auth.self, from: auth_data) else {
+            completionHandler(false, [])
             return
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts")!
         let headers = auth.headers(for: url)
         auth.session.request(url, headers: headers)
+            .validate(statusCode: 200..<300)
             .responseDecodable(of: [Proxy].self) { response in
                 switch response.result {
                 case .success(let records):

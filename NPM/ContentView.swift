@@ -1,50 +1,42 @@
-//
-//  ContentView.swift
-//  NPM
-//
-//  Created by Yaser Almasri on 13/08/25.
-//
-
 import SwiftUI
 
 struct ContentView: View {
-    
-    @EnvironmentObject var appService: AppService
-    
+    private enum Section {
+        case dashboard, proxies, redirections, settings
+    }
+
+    @EnvironmentObject private var appService: AppService
+    @State private var section = Section.dashboard
+    @State private var proxyRoute: ProxyRoute?
+
     var body: some View {
-        TabView {
-            DashboardView()
-                .environmentObject(appService)
-                .tabItem {
-                    Label("DASHBOARD", systemImage: "house")
-                }
-            
-            ProxiesView()
-                .environmentObject(appService)
-                .tabItem {
-                    Label("PROXY", systemImage: "bolt.fill")
-                }
-            
-            RedirectionsView()
-                .environmentObject(appService)
-                .tabItem {
-                    Label("REDIRECTION", systemImage: "arrow.trianglehead.branch")
-                    
-                }
-            
-            SettingsView()
-                .environmentObject(appService)
-                .tabItem {
-                    Label("SETTINGS", systemImage: "gear")
-                }
+        TabView(selection: $section) {
+            Tab("DASHBOARD", systemImage: "house", value: .dashboard) {
+                DashboardView(openProxies: openProxies)
+            }
+            Tab("PROXY", systemImage: "bolt", value: .proxies) {
+                ProxiesView(route: $proxyRoute)
+            }
+            Tab("REDIRECTION", systemImage: "arrow.trianglehead.branch", value: .redirections) {
+                RedirectionsView()
+            }
+            Tab("SETTINGS", systemImage: "gear", value: .settings) {
+                SettingsView()
+            }
         }
+        .tabViewStyle(.sidebarAdaptable)
         .onAppear {
-            self.appService.fetchCerts()
-            self.appService.fetchAccessLists()
+            appService.fetchCerts()
+            appService.fetchAccessLists()
         }
+    }
+
+    private func openProxies(_ route: ProxyRoute) {
+        proxyRoute = route
+        section = .proxies
     }
 }
 
 #Preview {
-    ContentView()
+    ContentView().environmentObject(AppService())
 }
