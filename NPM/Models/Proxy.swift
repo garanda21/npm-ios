@@ -13,7 +13,12 @@ struct Proxy: Host, SSLHost, Decodable {
     var domain_names: [String]
     var forward_host: String
     var forward_port: Int
-    var access_list_id: Int
+    var access_list_id: Int?
+    var npmplus_access_list_ids: [Int]?
+
+    var accessListIDs: [Int] {
+        npmplus_access_list_ids ?? access_list_id.map { $0 == 0 ? [] : [$0] } ?? []
+    }
     var certificate_id: Int
     var ssl_forced: Bool
     var caching_enabled: Bool

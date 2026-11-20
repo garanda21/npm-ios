@@ -24,8 +24,8 @@ class RedirectionsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/redirection-hosts")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, headers: headers)
             .responseDecodable(of: [Redirection].self) { response in
                 switch response.result {
                 case .success(let records):
@@ -54,15 +54,13 @@ class RedirectionsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/redirection-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "enabled": enabled
         ]
-        AF.request(url, method: .put, parameters: params, encoding: encoding, headers: ["Authorization": token])
-            .printError()
+        auth.session.request(url, method: .put, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Redirection.self) { response in
-                print(response)
                 switch response.result {
                 case .success(_):
                     completionHandler(true)
@@ -93,7 +91,7 @@ class RedirectionsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/redirection-hosts")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "domain_names": domains,
@@ -103,10 +101,8 @@ class RedirectionsRequest {
             "block_exploits": blockCommonExploit,
             "forward_http_code": httpCode
         ]
-        AF.request(url,method: .post, parameters: params, encoding: encoding, headers: ["Authorization": token])
-            .printError()
+        auth.session.request(url,method: .post, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Redirection.self) { response in
-                print(response)
                 switch response.result {
                 case .success(let record):
                     completionHandler(true, record)
@@ -137,7 +133,7 @@ class RedirectionsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/redirection-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "certificate_id": cert_id,
@@ -146,7 +142,7 @@ class RedirectionsRequest {
             "hsts_subdomains": hstsSubdomains,
             "http2_support": httpSupport
         ]
-        AF.request(url, method: .put, parameters: params, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url, method: .put, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Redirection.self) { response in
                 switch response.result {
                 case .success(_):
@@ -179,7 +175,7 @@ class RedirectionsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/redirection-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "domain_names": domains,
@@ -189,10 +185,8 @@ class RedirectionsRequest {
             "block_exploits": blockCommonExploit,
             "forward_http_code": httpCode
         ]
-        AF.request(url,method: .put, parameters: params, encoding: encoding, headers: ["Authorization": token])
-            .printError()
+        auth.session.request(url,method: .put, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Redirection.self) { response in
-                print(response)
                 switch response.result {
                 case .success(let record):
                     completionHandler(true, record)
@@ -218,8 +212,8 @@ class RedirectionsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/redirection-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, method: .delete, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, method: .delete, headers: headers)
             .response { response in
                 switch response.result {
                 case .success(_):

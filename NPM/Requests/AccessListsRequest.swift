@@ -24,8 +24,8 @@ class AccessListsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/access-lists?expand=items,clients")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, headers: headers)
             .responseDecodable(of: [AccessList].self) { response in
                 switch response.result {
                 case .success(let records):
@@ -56,7 +56,7 @@ class AccessListsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/access-lists")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "name": name,
@@ -65,7 +65,7 @@ class AccessListsRequest {
             "items": items,
             "clients": clients,
         ]
-        AF.request(url,method: .post, parameters: params, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url,method: .post, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: AccessList.self) { response in
                 switch response.result {
                 case .success(let record):
@@ -97,7 +97,7 @@ class AccessListsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/access-lists/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "name": name,
@@ -106,7 +106,7 @@ class AccessListsRequest {
             "items": items,
             "clients": clients,
         ]
-        AF.request(url,method: .put, parameters: params, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url,method: .put, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: AccessList.self) { response in
                 switch response.result {
                 case .success(let record):
@@ -133,9 +133,9 @@ class AccessListsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/access-lists/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
-        AF.request(url,method: .delete, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url,method: .delete, encoding: encoding, headers: headers)
             .responseDecodable(of: Bool.self) { response in
                 switch response.result {
                 case .success(let success):

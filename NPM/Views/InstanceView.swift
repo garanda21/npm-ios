@@ -20,6 +20,8 @@ struct InstanceView: View {
     @State private var serverUrl = ""
     @State private var username = ""
     @State private var password = ""
+    @State private var verificationCode = ""
+    @State private var challenge: AuthChallenge?
     
     @State private var connectionError: Bool = false
     @State private var isInvalidURL: Bool = false
@@ -55,6 +57,13 @@ struct InstanceView: View {
                         .multilineTextAlignment(.trailing)
                 }
                 
+                if challenge != nil {
+                    TextField("Verification code", text: $verificationCode)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .textContentType(.oneTimeCode)
+                }
+
                 if connectionError == true {
                     Text("ERROR_CONNECTING_TO_SERVER")
                         .foregroundStyle(.red)
@@ -68,7 +77,11 @@ struct InstanceView: View {
                 }
 
             }
+            .disabled(isLoading)
         }
+        .onChange(of: serverUrl) { _, _ in resetChallenge() }
+        .onChange(of: username) { _, _ in resetChallenge() }
+        .onChange(of: password) { _, _ in resetChallenge() }
         .onAppear {
             self.serverUrl = self.npmServerUrl
             self.username = self.npmUsername
@@ -95,25 +108,56 @@ struct InstanceView: View {
             return
         }
         
-        guard let url = URL(string: self.serverUrl), url.host != nil else {
+        let normalizedURL = serverUrl.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        guard let components = URLComponents(string: normalizedURL),
+              let url = components.url,
+              let scheme = components.scheme, ["https", "http"].contains(scheme),
+              components.host?.isEmpty == false,
+              components.user == nil, components.password == nil,
+              components.query == nil, components.fragment == nil else {
             self.isInvalidURL = true
             return
         }
-        
-        self.isLoading = true
-        self.npmServerUrl = self.serverUrl
-        self.npmUsername = self.username
-        self.npmPassword = self.password
-        
-        AuthRequest.login { success in
+
+        let completion: (AuthLoginResult) -> Void = { result in
             self.isLoading = false
-            if success {
+            switch result {
+            case .success(let auth):
+                guard let encoded = try? JSONEncoder().encode(auth) else {
+                    self.connectionError = true
+                    return
+                }
+                UserDefaults.standard.set(encoded, forKey: "npm_auth")
+                self.npmUsername = self.username
+                self.npmServerUrl = url.absoluteString
+                self.npmPassword = ""
+                self.appService.fetchCerts()
+                self.appService.fetchAccessLists()
                 self.dismiss()
-            } else {
+            case .verificationRequired(let challenge):
+                self.challenge = challenge
+            case .failure:
                 self.connectionError = true
             }
         }
+
+        if let challenge {
+            let code = verificationCode.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !code.isEmpty else { return }
+            self.isLoading = true
+            AuthRequest.verify(server: url, challenge: challenge, code: code, completion: completion)
+        } else {
+            self.isLoading = true
+            AuthRequest.login(server: url, username: username, password: password, completion: completion)
+        }
     }
+
+    private func resetChallenge() {
+        challenge = nil
+        verificationCode = ""
+    }
+
 }
 
 #Preview {

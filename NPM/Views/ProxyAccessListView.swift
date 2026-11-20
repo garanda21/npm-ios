@@ -14,17 +14,17 @@ struct ProxyAccessListView: View {
 
     var proxy: Proxy
     
-    @State private var selectedAccessList: Int = 0
+    @State private var selectedAccessLists: [Int] = []
     
     var body: some View {
         List {
             Button {
-                self.selectedAccessList = 0
+                self.selectedAccessLists = []
             } label: {
                 HStack {
                     Text("PUBLICLY_ACCESSIBLE")
                     Spacer()
-                    if self.selectedAccessList == 0 {
+                    if self.selectedAccessLists.isEmpty {
                         Image(systemName: "checkmark")
                             .foregroundStyle(Color.accentColor)
                     }
@@ -34,12 +34,18 @@ struct ProxyAccessListView: View {
             
             ForEach(self.appService.accessLists, id: \.id) { accessList in
                 Button {
-                    self.selectedAccessList = accessList.id
+                    if proxy.npmplus_access_list_ids == nil {
+                        selectedAccessLists = [accessList.id]
+                    } else if selectedAccessLists.contains(accessList.id) {
+                        selectedAccessLists.removeAll { $0 == accessList.id }
+                    } else {
+                        selectedAccessLists.append(accessList.id)
+                    }
                 } label: {
                     HStack {
                         Text(accessList.name)
                         Spacer()
-                        if self.selectedAccessList == accessList.id {
+                        if self.selectedAccessLists.contains(accessList.id) {
                             Image(systemName: "checkmark")
                                 .foregroundStyle(Color.accentColor)
                         }
@@ -50,7 +56,7 @@ struct ProxyAccessListView: View {
         }//List
         .onAppear {
             self.appService.fetchAccessLists()
-            self.selectedAccessList = self.proxy.access_list_id
+            self.selectedAccessLists = proxy.accessListIDs
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -64,7 +70,7 @@ struct ProxyAccessListView: View {
     }
     
     private func save() {
-        ProxiesRequest.updateAccessList(id: self.proxy.id, accessListId: self.selectedAccessList) { success in
+        ProxiesRequest.updateAccessList(id: self.proxy.id, accessListIDs: selectedAccessLists, usesMultipleLists: proxy.npmplus_access_list_ids != nil) { success in
             if success {
                 self.appService.fetchProxies()
                 self.dismiss()

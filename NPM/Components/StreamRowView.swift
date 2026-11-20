@@ -31,7 +31,7 @@ struct StreamRowView: View {
                     HStack {
                         Image(systemName: "arrow.turn.down.right")
                             .imageScale(.small)
-                        Text("\(stream.forwarding_host):\(String(stream.forwarding_port))")
+                        Text("\(stream.forwarding_host):\(stream.forwarding_port)")
                             .font(.subheadline)
                             .foregroundColor(.gray)
                     }

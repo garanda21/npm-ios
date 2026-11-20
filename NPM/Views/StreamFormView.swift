@@ -27,9 +27,9 @@ struct StreamFormView: View {
     init(stream: Stream? = nil) {
         self.stream = stream
         if let strm = stream {
-            self._incomingPort = State(initialValue: String(strm.incoming_port))
+            self._incomingPort = State(initialValue: strm.incoming_port)
             self._forwardHost = State(initialValue: strm.forwarding_host)
-            self._forwardPort = State(initialValue: String(strm.forwarding_port))
+            self._forwardPort = State(initialValue: strm.forwarding_port)
             self._tcpForwarding = State(initialValue: strm.tcp_forwarding)
             self._udpForwarding = State(initialValue: strm.udp_forwarding)
             self._certificateId = State(initialValue: strm.certificate_id)
@@ -43,7 +43,7 @@ struct StreamFormView: View {
                     Text("INCOMING_PORT")
                     TextField("INCOMING_PORT", text: $incomingPort)
                         .multilineTextAlignment(.trailing)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.numbersAndPunctuation)
                 }
             }//section
             
@@ -60,7 +60,7 @@ struct StreamFormView: View {
                     Text("FORWARD_PORT")
                     TextField("FORWARD_PORT", text: $forwardPort)
                         .multilineTextAlignment(.trailing)
-                        .keyboardType(.numberPad)
+                        .keyboardType(.numbersAndPunctuation)
                 }//hstack
             }//section
             
@@ -80,7 +80,7 @@ struct StreamFormView: View {
                 Button("SAVE") {
                     self.save()
                 }
-                .disabled(self.isLoading)
+                .disabled(self.isLoading || self.incomingPort.isEmpty || self.forwardHost.isEmpty)
             }
         }
     }
@@ -89,9 +89,9 @@ struct StreamFormView: View {
         self.isLoading = true
         if self.stream == nil {
             StreamsRequest.create(
-                incomingPort: Int(self.incomingPort)!,
+                incomingPort: self.incomingPort,
                 forwardHost: self.forwardHost,
-                forwardPort: Int(self.forwardPort)!,
+                forwardPort: self.forwardPort,
                 tcpForwarding: self.tcpForwarding,
                 udpForwarding: self.udpForwarding,
                 certificateId: self.certificateId
@@ -105,9 +105,9 @@ struct StreamFormView: View {
         } else {
             StreamsRequest.update(
                 id: self.stream!.id,
-                incomingPort: Int(self.incomingPort)!,
+                incomingPort: self.incomingPort,
                 forwardHost: self.forwardHost,
-                forwardPort: Int(self.forwardPort)!,
+                forwardPort: self.forwardPort,
                 tcpForwarding: self.tcpForwarding,
                 udpForwarding: self.udpForwarding,
                 certificateId: self.certificateId

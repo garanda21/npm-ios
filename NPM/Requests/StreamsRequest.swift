@@ -24,14 +24,13 @@ class StreamsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/streams")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, headers: headers)
             .responseDecodable(of: [Stream].self) { response in
                 switch response.result {
                 case .success(let records):
                     completionHandler(true, records)
                 case .failure(let error):
-                    print(response)
                     print(error.localizedDescription)
                     completionHandler(false, [])
                 }
@@ -39,9 +38,9 @@ class StreamsRequest {
     }
     
     public static func create(
-        incomingPort: Int,
+        incomingPort: String,
         forwardHost: String,
-        forwardPort: Int,
+        forwardPort: String,
         tcpForwarding: Bool,
         udpForwarding: Bool,
         certificateId: Int,
@@ -58,24 +57,32 @@ class StreamsRequest {
             return
         }
         
+        let ports: (incoming: Any, forwarding: Any)
+        if auth.cookieServer != nil {
+            ports = (incomingPort, forwardPort)
+        } else if let incoming = Int(incomingPort), let forwarding = Int(forwardPort) {
+            ports = (incoming, forwarding)
+        } else {
+            completionHandler(false, nil)
+            return
+        }
+
         let url = URL(string: "\(baseUrl)/api/nginx/streams")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
-        AF.request(url, method: .post, parameters: [
-            "incoming_port": incomingPort,
+        auth.session.request(url, method: .post, parameters: [
+            "incoming_port": ports.incoming,
             "forwarding_host": forwardHost,
-            "forwarding_port": forwardPort,
+            "forwarding_port": ports.forwarding,
             "tcp_forwarding": tcpForwarding,
             "udp_forwarding": udpForwarding,
             "certificate_id": certificateId
-        ], encoding: encoding, headers: ["Authorization": token])
-        .printError()
+        ], encoding: encoding, headers: headers)
             .responseDecodable(of: Stream.self) { response in
                 switch response.result {
                 case .success(let record):
                     completionHandler(true, record)
                 case .failure(let error):
-                    print(response)
                     print(error.localizedDescription)
                     completionHandler(false, nil)
                 }
@@ -84,9 +91,9 @@ class StreamsRequest {
     
     public static func update(
         id: Int,
-        incomingPort: Int,
+        incomingPort: String,
         forwardHost: String,
-        forwardPort: Int,
+        forwardPort: String,
         tcpForwarding: Bool,
         udpForwarding: Bool,
         certificateId: Int,
@@ -103,23 +110,32 @@ class StreamsRequest {
             return
         }
         
+        let ports: (incoming: Any, forwarding: Any)
+        if auth.cookieServer != nil {
+            ports = (incomingPort, forwardPort)
+        } else if let incoming = Int(incomingPort), let forwarding = Int(forwardPort) {
+            ports = (incoming, forwarding)
+        } else {
+            completionHandler(false, nil)
+            return
+        }
+
         let url = URL(string: "\(baseUrl)/api/nginx/streams/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
-        AF.request(url, method: .put, parameters: [
-            "incoming_port": incomingPort,
+        auth.session.request(url, method: .put, parameters: [
+            "incoming_port": ports.incoming,
             "forwarding_host": forwardHost,
-            "forwarding_port": forwardPort,
+            "forwarding_port": ports.forwarding,
             "tcp_forwarding": tcpForwarding,
             "udp_forwarding": udpForwarding,
             "certificate_id": certificateId
-        ], encoding: encoding, headers: ["Authorization": token])
+        ], encoding: encoding, headers: headers)
             .responseDecodable(of: Stream.self) { response in
                 switch response.result {
                 case .success(let record):
                     completionHandler(true, record)
                 case .failure(let error):
-                    print(response)
                     print(error.localizedDescription)
                     completionHandler(false, nil)
                 }
@@ -141,9 +157,9 @@ class StreamsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/streams/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
-        AF.request(url,method: .delete, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url,method: .delete, encoding: encoding, headers: headers)
             .responseDecodable(of: Bool.self) { response in
                 switch response.result {
                 case .success(let success):

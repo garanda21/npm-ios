@@ -24,14 +24,13 @@ class DeadHostsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/dead-hosts")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, headers: headers)
             .responseDecodable(of: [DeadHost].self) { response in
                 switch response.result {
                 case .success(let records):
                     completionHandler(true, records)
                 case .failure(let error):
-                    print(response)
                     print(error.localizedDescription)
                     completionHandler(false, [])
                 }
@@ -59,23 +58,21 @@ class DeadHostsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/dead-hosts")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
-        AF.request(url, method: .post, parameters: [
+        auth.session.request(url, method: .post, parameters: [
             "domain_names": domains,
             "ssl_forced": forceSSL,
             "hsts_enabled": hsts,
             "hsts_subdomains": hstsSubdomains,
             "http2_support": httpSupport,
             "certificate_id": certificateId
-        ], encoding: encoding, headers: ["Authorization": token])
-        .printError()
+        ], encoding: encoding, headers: headers)
             .responseDecodable(of: DeadHost.self) { response in
                 switch response.result {
                 case .success(let record):
                     completionHandler(true, record)
                 case .failure(let error):
-                    print(response)
                     print(error.localizedDescription)
                     completionHandler(false, nil)
                 }
@@ -104,22 +101,21 @@ class DeadHostsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/dead-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
-        AF.request(url, method: .put, parameters: [
+        auth.session.request(url, method: .put, parameters: [
             "domain_names": domains,
             "ssl_forced": forceSSL,
             "hsts_enabled": hsts,
             "hsts_subdomains": hstsSubdomains,
             "http2_support": httpSupport,
             "certificate_id": certificateId
-        ], encoding: encoding, headers: ["Authorization": token])
+        ], encoding: encoding, headers: headers)
             .responseDecodable(of: DeadHost.self) { response in
                 switch response.result {
                 case .success(let record):
                     completionHandler(true, record)
                 case .failure(let error):
-                    print(response)
                     print(error.localizedDescription)
                     completionHandler(false, nil)
                 }
@@ -141,9 +137,9 @@ class DeadHostsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/dead-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
-        AF.request(url,method: .delete, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url,method: .delete, encoding: encoding, headers: headers)
             .responseDecodable(of: Bool.self) { response in
                 switch response.result {
                 case .success(let success):

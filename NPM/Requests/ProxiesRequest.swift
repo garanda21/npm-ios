@@ -24,8 +24,8 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, headers: headers)
             .responseDecodable(of: [Proxy].self) { response in
                 switch response.result {
                 case .success(let records):
@@ -53,12 +53,12 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "enabled": enabled
         ]
-        AF.request(url, method: .put, parameters: params, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url, method: .put, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(_):
@@ -88,7 +88,7 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "domain_names": domains,
@@ -96,7 +96,7 @@ class ProxiesRequest {
             "forward_host": host,
             "forward_port": port
         ]
-        AF.request(url,method: .post, parameters: params, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url,method: .post, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(let record):
@@ -127,7 +127,7 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "domain_names": domains,
@@ -135,7 +135,7 @@ class ProxiesRequest {
             "forward_host": host,
             "forward_port": port
         ]
-        AF.request(url,method: .put, parameters: params, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url,method: .put, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(let record):
@@ -167,7 +167,7 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
         let params: [String: Any] = [
             "certificate_id": cert_id,
@@ -176,7 +176,7 @@ class ProxiesRequest {
             "hsts_subdomains": hstsSubdomains,
             "http2_support": httpSupport
         ]
-        AF.request(url, method: .put, parameters: params, encoding: encoding, headers: ["Authorization": token])
+        auth.session.request(url, method: .put, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(_):
@@ -190,7 +190,8 @@ class ProxiesRequest {
     
     public static func updateAccessList(
         id: Int,
-        accessListId: Int,
+        accessListIDs: [Int],
+        usesMultipleLists: Bool,
         completionHandler: @escaping (_ success: Bool) -> Void
     ) {
         let userDefaults = UserDefaults.standard
@@ -204,10 +205,18 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         let encoding = JSONEncoding.default
-        let params: [String: Any] = ["access_list_id": accessListId]
-        AF.request(url, method: .put, parameters: params, encoding: encoding, headers: ["Authorization": token])
+        let params: [String: Any]
+        if usesMultipleLists {
+            params = [
+                "npmplus_access_list_ids": accessListIDs,
+                "npmplus_access_list_type": accessListIDs.isEmpty ? "public" : "custom"
+            ]
+        } else {
+            params = ["access_list_id": accessListIDs.first ?? 0]
+        }
+        auth.session.request(url, method: .put, parameters: params, encoding: encoding, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(_):
@@ -235,8 +244,19 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, method: .put, parameters: ["locations": locations], encoder: JSONParameterEncoder.default, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        var locations = locations
+        if auth.cookieServer != nil {
+            for index in locations.indices {
+                if locations[index].npmplus_access_list_ids == nil {
+                    locations[index].npmplus_access_list_ids = []
+                }
+                if locations[index].npmplus_access_list_type == nil {
+                    locations[index].npmplus_access_list_type = "global"
+                }
+            }
+        }
+        auth.session.request(url, method: .put, parameters: ["locations": locations], encoder: JSONParameterEncoder.default, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(_):
@@ -263,8 +283,8 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, method: .delete, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, method: .delete, headers: headers)
             .response { response in
                 switch response.result {
                 case .success(_):
@@ -292,8 +312,8 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, method: .put, parameters: ["caching_enabled": cacheAssets], encoder: JSONParameterEncoder.default, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, method: .put, parameters: ["caching_enabled": cacheAssets], encoder: JSONParameterEncoder.default, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(_):
@@ -321,8 +341,8 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, method: .put, parameters: ["block_exploits": blockCommonExploits], encoder: JSONParameterEncoder.default, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, method: .put, parameters: ["block_exploits": blockCommonExploits], encoder: JSONParameterEncoder.default, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(_):
@@ -350,8 +370,8 @@ class ProxiesRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/nginx/proxy-hosts/\(id)")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, method: .put, parameters: ["allow_websocket_upgrade": websocketsSupport], encoder: JSONParameterEncoder.default, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, method: .put, parameters: ["allow_websocket_upgrade": websocketsSupport], encoder: JSONParameterEncoder.default, headers: headers)
             .responseDecodable(of: Proxy.self) { response in
                 switch response.result {
                 case .success(_):

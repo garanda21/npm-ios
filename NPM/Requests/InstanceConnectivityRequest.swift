@@ -3,6 +3,10 @@ import Foundation
 
 class InstanceConnectivityRequest {
     static func request(baseURL: String, token: String) -> URLRequest? {
+        request(baseURL: baseURL, auth: Auth(token: token, expires: ""))
+    }
+
+    static func request(baseURL: String, auth: Auth) -> URLRequest? {
         guard let baseURL = URL(string: baseURL) else {
             return nil
         }
@@ -12,26 +16,28 @@ class InstanceConnectivityRequest {
             .appendingPathComponent("users")
             .appendingPathComponent("me")
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        for header in auth.headers(for: url) {
+            request.setValue(header.value, forHTTPHeaderField: header.name)
+        }
         return request
     }
 
     static func check(
         userDefaults: UserDefaults = .standard,
-        session: Session = AF,
+        session: Session? = nil,
         completionHandler: @escaping (InstanceConnectivityStatus) -> Void
     ) {
         guard let baseURL = userDefaults.string(forKey: "npm_server_url"),
               let authData = userDefaults.data(forKey: "npm_auth"),
               let auth = try? JSONDecoder().decode(Auth.self, from: authData),
-              let request = request(baseURL: baseURL, token: auth.token) else {
+              let request = request(baseURL: baseURL, auth: auth) else {
             DispatchQueue.main.async {
                 completionHandler(.authenticationFailed)
             }
             return
         }
 
-        session.request(request)
+        (session ?? auth.session).request(request)
             .validate(statusCode: 200..<600)
             .response { response in
                 let result = status(

@@ -20,13 +20,10 @@ struct ProxyView: View {
     @State private var isShowingDeleteConfirmation: Bool = false
     
     var accessList: String {
-        if let accessList = self.appService.accessLists.first(where: { al in
-            al.id == self.proxy.access_list_id
-        }) {
-            return accessList.name
+        let names = proxy.accessListIDs.map { id in
+            appService.accessLists.first { $0.id == id }?.name ?? "#\(id)"
         }
-            
-        return "PUBLICLY_ACCESSIBLE"
+        return names.isEmpty ? "PUBLICLY_ACCESSIBLE" : names.joined(separator: ", ")
     }
     
     var cert: Cert? {

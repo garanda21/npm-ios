@@ -23,9 +23,10 @@ class CertsRequest {
             return
         }
         
-        let url = URL(string: "\(baseUrl)/api/nginx/certificates?expand=proxy_hosts,dead_hosts,redirection_hosts")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, headers: ["Authorization": token])
+        let streamExpansion = auth.cookieServer == nil ? "" : ",streams"
+        let url = URL(string: "\(baseUrl)/api/nginx/certificates?expand=proxy_hosts,dead_hosts,redirection_hosts\(streamExpansion)")!
+        let headers = auth.headers(for: url)
+        auth.session.request(url, headers: headers)
             .responseDecodable(of: [Cert].self) { response in
                 switch response.result {
                 case .success(let records):
@@ -54,7 +55,7 @@ class CertsRequest {
         guard let auth = try? JSONDecoder().decode(Auth.self, from: auth_data) else { return }
 
         let url = URL(string: "\(baseUrl)/api/nginx/certificates")!
-        let token = "Bearer \(auth.token)"
+        let headers = auth.headers(for: url)
         var meta: [String: Any] = ["letsencrypt_agree": true]
         if dnsChallenge {
             meta["dns_challenge"] = true
@@ -64,8 +65,8 @@ class CertsRequest {
                 meta["propagation_seconds"] = secs
             }
         }
-        let params: [String: Any] = ["domain_names": domains, "meta": meta]
-        AF.request(url, method: .post, parameters: params, encoding: JSONEncoding.default, headers: ["Authorization": token])
+        let params: [String: Any] = ["provider": "letsencrypt", "domain_names": domains, "meta": meta]
+        auth.session.request(url, method: .post, parameters: params, encoding: JSONEncoding.default, headers: headers)
             .responseDecodable(of: Cert.self) { response in
                 switch response.result {
                 case .success(let record):

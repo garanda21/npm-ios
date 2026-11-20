@@ -24,8 +24,8 @@ class ReportsRequest {
         }
         
         let url = URL(string: "\(baseUrl)/api/reports/hosts")!
-        let token = "Bearer \(auth.token)"
-        AF.request(url, headers: ["Authorization": token])
+        let headers = auth.headers(for: url)
+        auth.session.request(url, headers: headers)
             .responseDecodable(of: ReportHost.self) { response in
                 switch response.result {
                 case .success(let record):
