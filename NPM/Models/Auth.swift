@@ -10,6 +10,7 @@ struct Auth: Codable {
             configuration.httpCookieStorage = nil
             return configuration
         }(),
+        interceptor: AuthSessionInterceptor(),
         redirectHandler: Redirector(behavior: .doNotFollow)
     )
 
