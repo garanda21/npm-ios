@@ -10,7 +10,7 @@ struct Auth: Codable {
             configuration.httpCookieStorage = nil
             return configuration
         }(),
-        interceptor: AuthSessionInterceptor(),
+        interceptor: AuthSessionInterceptor.shared,
         redirectHandler: Redirector(behavior: .doNotFollow)
     )
 
@@ -32,6 +32,7 @@ struct Auth: Codable {
               url.port == server.port else {
             return [:]
         }
+        AuthSessionInterceptor.shared.register(self, for: url)
         return ["Cookie": "\(Self.cookieName)=\(token)"]
     }
 
